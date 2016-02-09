@@ -1,0 +1,9 @@
+require "sinatra"
+require "active_record"
+require "json"
+require "curb"
+require "rufus-scheduler"
+require "spaceship"
+require_relative "model"
+require_relative "server"
+run App

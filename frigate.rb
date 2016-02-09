@@ -5,7 +5,7 @@ require "json"
 
 countries = JSON.parse(File.read("countryCodesMapping.json"))
 
-Spaceship::Tunes.login("ios.spaceship.builder@gmail.com", "121Ntr3#$%bar3")
+Spaceship::Tunes.login("ios.spaceship.builder@gmail.com", "121Ntr3#$%")
 app = Spaceship::Tunes::Application.find(482745751)
 puts app.name
 data = []
