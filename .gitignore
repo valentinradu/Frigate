@@ -1,3 +1,5 @@
-*.account
+account.json
 .DS_Store
 Gemfile.lock
+*.crt
+*.pem

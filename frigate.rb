@@ -1,13 +1,11 @@
-lib = File.expand_path('../spaceship/lib', File.dirname(__FILE__))
-$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require "spaceship"
 require "json"
 
 countries = JSON.parse(File.read("countryCodesMapping.json"))
+credentials = File.open("test.account").readlines.map(&:strip)
 
-Spaceship::Tunes.login("ios.spaceship.builder@gmail.com", "121Ntr3#$%")
+Spaceship::Tunes.login(credentials[0], credentials[1])
 app = Spaceship::Tunes::Application.find(482745751)
-puts app.name
 data = []
 countries.each do |code, name|
   begin
