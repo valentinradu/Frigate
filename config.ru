@@ -15,7 +15,6 @@ require_relative "server"
 webrick_options = {
   :Port               => 9292,#8443,
   :Logger             => WEBrick::Log::new($stdout, WEBrick::Log::DEBUG),
-  :DocumentRoot       => "./",
   :SSLEnable          => true,
   :SSLCertificate     => OpenSSL::X509::Certificate.new( File.open("./cert.crt").read ),
   :SSLPrivateKey      => OpenSSL::PKey::RSA.new(         File.open("./pkey.pem").read ),
