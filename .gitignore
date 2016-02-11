@@ -1,4 +1,5 @@
 account.json
+development.db
 .DS_Store
 Gemfile.lock
 *.crt

@@ -8,6 +8,7 @@ require 'openssl'
 require 'webrick'
 require 'webrick/https'
 require 'houston'
+require 'mustache'
 require_relative "model"
 require_relative "server"
 
