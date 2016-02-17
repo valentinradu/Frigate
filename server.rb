@@ -88,7 +88,7 @@ class App < Sinatra::Base
   set :static, false
 
   @@udid_match = /[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}/
-  @@countries = JSON.parse(File.read("countryCodesMapping.json"))
+  @@stores = JSON.parse(File.read("./static/stores.json"))
   @@credentials = JSON.parse(File.read("account.json"))
 
   helpers RequestsProcessor
@@ -126,10 +126,14 @@ class App < Sinatra::Base
   end
 
   get %r{\/gifts\/(#{@@udid_match})} do |state|
+    content_type :json
+    status 200
     @device.gifts.select{|gift| gift.state != "available"}.to_json
   end
 
   options %r{\/gifts\/(#{@@udid_match})} do
+    content_type :json
+    status 200
     @device.gifts.select{|gift| gift.state == "available"}.to_json
   end
 
@@ -154,7 +158,7 @@ class App < Sinatra::Base
     apn_token = @json_data["apn_token"]
     user_name = @json_data["user_name"]
     gift_id = @json_data["gift_id"] if @json_data["gift_id"].to_s =~ %r{^\d+$}
-    store_front = @json_data["store_front"] if @@countries.keys.include? @json_data["store_front"].to_s
+    store_front = @json_data["store_front"] if @@stores.keys.include? @json_data["store_front"].to_s
 
     halt 400, JSON.generate({:message => "user_name_mandatory"}) if user_name.nil?
     halt 400, JSON.generate({:message => "user_name_invalid"}) unless user_name.length > 0
