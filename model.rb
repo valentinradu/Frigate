@@ -3,7 +3,7 @@ require "active_record"
 class Gift < ActiveRecord::Base
     belongs_to :device
     def as_json(options={})
-      super( :except => [:device_id] )
+      super( :except => [:device_id], :methods => [:id] )
     end
 end
 

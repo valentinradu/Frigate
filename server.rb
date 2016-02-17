@@ -87,7 +87,6 @@ class App < Sinatra::Base
 
   set :static, false
 
-  @@udid_match = /[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}/
   @@stores = JSON.parse(File.read("./static/stores.json"))
   @@credentials = JSON.parse(File.read("account.json"))
 
@@ -104,7 +103,7 @@ class App < Sinatra::Base
     # end
   end
 
-  before %r{\/.*\/(#{@@udid_match})} do |udid|
+  before %r{\/.*\/id/(.*)} do |udid|
     @device = Device.find_or_create_by(udid: udid)
     halt 500, JSON.generate({:message => "device_id_nil"}) if @device.nil?
     unless Array(@device.gifts).count > 0
@@ -125,13 +124,13 @@ class App < Sinatra::Base
     send_file file_path
   end
 
-  get %r{\/gifts\/(#{@@udid_match})} do |state|
+  get %r{\/gifts\/id/(.*)} do
     content_type :json
     status 200
     @device.gifts.select{|gift| gift.state != "available"}.to_json
   end
 
-  options %r{\/gifts\/(#{@@udid_match})} do
+  options %r{\/gifts\/id/(.*)} do
     content_type :json
     status 200
     @device.gifts.select{|gift| gift.state == "available"}.to_json
@@ -153,7 +152,7 @@ class App < Sinatra::Base
     notify_devices(APN, process_appstore_requests(@@credentials["user"], @@credentials["password"])).to_json
   end
 
-  post %r{\/giftRequest\/(#{@@udid_match})} do
+  post %r{\/giftRequest\/id/(.*)} do
     email = @json_data["email"]
     apn_token = @json_data["apn_token"]
     user_name = @json_data["user_name"]
@@ -170,7 +169,7 @@ class App < Sinatra::Base
     @device.update_attributes(:email => email, :apn_token => apn_token)
 
     gift = @device.gifts.find_by_id(gift_id)
-    halt 404, JSON.generate({:message => "gift_not_foud"}) if gift.nil?
+    halt 404, JSON.generate({:message => "gift_not_found"}) if gift.nil?
     halt 400, JSON.generate({:message => "gift_cant_be_requested"}) unless gift["state"] == "available"
     halt 500, JSON.generate({:message => "gift_cant_be_updated"}) unless gift.update_attributes(:state => "requested",
                                                                                                 :store_front => store_front,
