@@ -6,11 +6,11 @@ class ServerTest < Test::Unit::TestCase
   @@credentials = JSON.parse(File.read("account.json"))
 
   def test_user_gift_request_owned
-    helper_gift_request_with_user("f.s.s.", "f.s.s@gmail.com", "US", "a121-3212-dee3-dfe0", "owned", false, nil)
+    helper_gift_request_with_user("F.S.s.", "f.s.s@gmail.com", "US", "a121-3212-dee3-dfe0", "owned", false, nil)
   end
 
   def test_user_gift_request_word_count_too_low
-    helper_gift_request_with_user("Mgoet", "Mgoet@gmail.com", "US", "a144-3212-dee3-dfe0", "available", true, "word_count_too_low")
+    helper_gift_request_with_user("MGOET", "Mgoet@gmail.com", "US", "a144-3212-dee3-dfe0", "available", true, "word_count_too_low")
   end
 
   def test_user_gift_request_rating_too_low
