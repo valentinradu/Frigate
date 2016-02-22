@@ -25,11 +25,9 @@ module RequestsProcessor
               if concurent_gifts.nil? or concurent_gifts.count == 0
                 gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :content => review.content)
               else
-                logger.info "exists"
                 if gift.forceful_content.nil? or gift.forceful_content.length <= 0 or gift.forceful_content.downcase != review.content.downcase or concurent_gifts.map { |e| e.content }.include?(gift.forceful_content)
                   gift.update_attributes(:state => "available", :rejected => true, :rejection_reason => "forceful_review_failed")
                 else
-                  logger.info "but ok"
                   gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :content => review.content)
                 end
               end
