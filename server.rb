@@ -21,7 +21,22 @@ module RequestsProcessor
             when review.content.split.count < 10
               gift.update_attributes(:state => "available", :rejected => true, :rejection_reason => "word_count_too_low")
             else
-              gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil)
+              select = { :user_name => gift.user_name, :device_id => gift.device_id, :state => "owned" }
+              concurent_gifts = Gift.where("user_name == ? and device_id != ? and state == ?", gift.user_name, gift.device_id, "owned")
+              logger.info "added"
+              logger.info select
+              logger.info concurent_gifts.count
+              if concurent_gifts.nil? or concurent_gifts.count == 0
+                gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :content => review.content)
+              else
+                logger.info "exists"
+                if gift.forceful_content.nil? or gift.forceful_content.length <= 0 or gift.forceful_content.downcase != review.content.downcase or concurent_gifts.map { |e| e.content }.include?(gift.forceful_content)
+                  gift.update_attributes(:state => "available", :rejected => true, :rejection_reason => "forceful_review_failed")
+                else
+                  logger.info "but ok"
+                  gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :content => review.content)
+                end
+              end
             end
           else
             gift.update_attributes(:state => "available", :rejected => true, :rejection_reason => "review_not_found")
@@ -67,6 +82,9 @@ module DatabaseHelper
             table.column :kind, :string #appstore
             table.column :store_front, :string
             table.column :user_name, :string
+            table.column :content, :string
+            table.column :forceful, :boolean
+            table.column :forceful_content, :string
             table.column :rejected, :boolean
             table.column :rejection_reason, :string
         end
@@ -157,6 +175,8 @@ class App < Sinatra::Base
     user_name = @json_data["user_name"]
     gift_id = @json_data["gift_id"] if @json_data["gift_id"].to_s =~ %r{^\d+$}
     store_front = @json_data["store_front"] if @@stores.keys.include? @json_data["store_front"].to_s
+    forceful = @json_data["forceful"]
+    forceful_content = @json_data["forceful_content"]
 
     halt 400, JSON.generate({:message => "user_name_mandatory"}) if user_name.nil?
     halt 400, JSON.generate({:message => "user_name_invalid"}) unless user_name.length > 0
@@ -164,16 +184,26 @@ class App < Sinatra::Base
     halt 400, JSON.generate({:message => "gift_id_invalid"}) if gift_id.nil?
     halt 400, JSON.generate({:message => "store_front_invalid"}) if store_front.nil?
     halt 400, JSON.generate({:message => "apn_token_invalid"}) if apn_token.nil?
-    halt 400, JSON.generate({:message => "review_already_claimed"}) if Gift.find_by("user_name == ? and device_id != ?", user_name, @device.id)
 
     @device.update_attributes(:email => email, :apn_token => apn_token)
-
     gift = @device.gifts.find_by_id(gift_id)
+
     halt 404, JSON.generate({:message => "gift_not_found"}) if gift.nil?
     halt 400, JSON.generate({:message => "gift_cant_be_requested"}) unless gift["state"] == "available"
-    halt 500, JSON.generate({:message => "gift_cant_be_updated"}) unless gift.update_attributes(:state => "requested",
-                                                                                                :store_front => store_front,
-                                                                                                :user_name => user_name)
+
+    attributes = {}
+    concurent_gifts = Gift.where("user_name == ? and device_id != ? and state == ?", user_name, gift.device_id, "owned")
+    unless concurent_gifts.nil? or concurent_gifts.count == 0
+      halt 400, JSON.generate({:message => "review_already_claimed"}) if forceful.nil? or forceful == false
+      halt 400, JSON.generate({:message => "forceful_review_content_missing"}) if forceful_content.nil? or forceful_content.length <= 0
+      halt 400, JSON.generate({:message => "forceful_review_content_identical"}) if gift.content == forceful_content
+      attributes[:forceful] = forceful
+      attributes[:forceful_content] = forceful_content
+    end
+    attributes[:state] = "requested"
+    attributes[:store_front] = store_front
+    attributes[:user_name] = user_name
+    halt 500, JSON.generate({:message => "gift_cant_be_updated"}) unless gift.update_attributes(attributes)
     content_type :json
     status 201
     gift.to_json
