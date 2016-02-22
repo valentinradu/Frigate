@@ -13,7 +13,6 @@ module RequestsProcessor
 
       g_gifts.group_by{|h| h.store_front}.each do |key, value|
         reviews = app.reviews("ios", key) rescue Spaceship::Client::UnexpectedResponse
-
         value.each do |gift|
           if review = reviews.select { |r|  r.nickname.downcase == gift.user_name.downcase }.first
             case
@@ -152,7 +151,7 @@ class App < Sinatra::Base
     notify_devices(APN, process_appstore_requests(@@credentials["user"], @@credentials["password"])).to_json
   end
 
-  post %r{\/giftRequest\/id/(.*)} do
+  post %r{\/giftRequest\/id/(.*)} do |udid|
     email = @json_data["email"]
     apn_token = @json_data["apn_token"]
     user_name = @json_data["user_name"]
@@ -165,6 +164,7 @@ class App < Sinatra::Base
     halt 400, JSON.generate({:message => "gift_id_invalid"}) if gift_id.nil?
     halt 400, JSON.generate({:message => "store_front_invalid"}) if store_front.nil?
     halt 400, JSON.generate({:message => "apn_token_invalid"}) if apn_token.nil?
+    halt 400, JSON.generate({:message => "review_already_claimed"}) if Gift.find_by("user_name == ? and device_id != ?", user_name, @device.id)
 
     @device.update_attributes(:email => email, :apn_token => apn_token)
 
