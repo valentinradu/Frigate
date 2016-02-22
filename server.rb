@@ -21,11 +21,7 @@ module RequestsProcessor
             when review.content.split.count < 10
               gift.update_attributes(:state => "available", :rejected => true, :rejection_reason => "word_count_too_low")
             else
-              select = { :user_name => gift.user_name, :device_id => gift.device_id, :state => "owned" }
               concurent_gifts = Gift.where("user_name == ? and device_id != ? and state == ?", gift.user_name, gift.device_id, "owned")
-              logger.info "added"
-              logger.info select
-              logger.info concurent_gifts.count
               if concurent_gifts.nil? or concurent_gifts.count == 0
                 gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :content => review.content)
               else
