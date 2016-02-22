@@ -21,11 +21,11 @@ module RequestsProcessor
             when review.content.split.count < 10
               gift.update_attributes(:state => "available", :rejected => true, :rejection_reason => "word_count_too_low")
             else
-              concurent_gifts = Gift.where("user_name == ? and device_id != ? and state == ?", gift.user_name, gift.device_id, "owned")
+              concurent_gifts = Gift.joins(:device).where("lower(user_name) == ? and devices.udid != ? and state == ?", gift.user_name.downcase, gift.device.udid, "owned")
               if concurent_gifts.nil? or concurent_gifts.count == 0
                 gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :content => review.content)
               else
-                if gift.forceful_content.nil? or gift.forceful_content.length <= 0 or gift.forceful_content.downcase != review.content.downcase or concurent_gifts.map { |e| e.content }.include?(gift.forceful_content)
+                if gift.forceful_content.nil? or gift.forceful_content.length <= 0 or gift.forceful_content.downcase != review.content.downcase or concurent_gifts.map { |e| e.content.downcase }.include?(gift.forceful_content.downcase)
                   gift.update_attributes(:state => "available", :rejected => true, :rejection_reason => "forceful_review_failed")
                 else
                   gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :content => review.content)
@@ -172,6 +172,7 @@ class App < Sinatra::Base
     forceful = @json_data["forceful"]
     forceful_content = @json_data["forceful_content"]
 
+    halt 404, JSON.generate({:message => "invalid_udid"}) if udid.nil? or udid.length <= 0
     halt 400, JSON.generate({:message => "user_name_mandatory"}) if user_name.nil?
     halt 400, JSON.generate({:message => "user_name_invalid"}) unless user_name.length > 0
     halt 400, JSON.generate({:message => "email_invalid"}) unless email =~ %r{[\w+\-.]+@[a-z\d\-]+(\.[a-z]+)*\.[a-z]+}
@@ -186,7 +187,9 @@ class App < Sinatra::Base
     halt 400, JSON.generate({:message => "gift_cant_be_requested"}) unless gift["state"] == "available"
 
     attributes = {}
-    concurent_gifts = Gift.where("user_name == ? and device_id != ? and state == ?", user_name, gift.device_id, "owned")
+    logger.info user_name
+    logger.info udid
+    concurent_gifts = Gift.joins(:device).where("lower(user_name) == ? and devices.udid != ? and state == ?", user_name.downcase, udid, "owned")
     unless concurent_gifts.nil? or concurent_gifts.count == 0
       halt 400, JSON.generate({:message => "review_already_claimed"}) if forceful.nil? or forceful == false
       halt 400, JSON.generate({:message => "forceful_review_content_missing"}) if forceful_content.nil? or forceful_content.length <= 0

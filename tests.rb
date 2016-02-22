@@ -49,11 +49,11 @@ class ServerTest < Test::Unit::TestCase
     data = {:email => "Das.Musiker@gmail.com",
             :user_name => "Das Musiker",
             :store_front => "US"}
-    helper_gift_request_with_process(data, "a121-3212-dee3-dfe0", "owned", false, nil)
+    helper_gift_request_with_process(data, "A3B5166B-BD0C-4D9F-999D-38CB1BD431B9", "owned", false, nil)
     data[:forceful] = true
     data[:forceful_content] = "forceful_content"
-    helper_gift_request_without_process(data, "1111-3212-dee3-daa0", 201)
-    helper_gift_request_with_process(data, "1111-3212-dee3-daa0", "available", true, "forceful_review_failed")
+    helper_gift_request_without_process(data, "B3B5166B-BD0C-4D9F-999D-38CB1BD431B6", 201)
+    helper_gift_request_with_process(data, "B3B5166B-BD0C-4D9F-999D-38CB1BD431B6", "available", true, "forceful_review_failed")
   end
 
   def helper_gift_request_without_process(data, uuid, expected_status)
