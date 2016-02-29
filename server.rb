@@ -1,4 +1,20 @@
 module RequestsProcessor
+  def process_twitter_requests()
+    gifts = Gift.where(:state => "requested", :kind => "twitter")
+    return gifts if gifts.nil? or gifts.count <= 0
+    gifts.each do |gift|
+      gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil)
+    end
+    gifts
+  end
+  def process_facebook_requests()
+    gifts = Gift.where(:state => "requested", :kind => "facebook")
+    return gifts if gifts.nil? or gifts.count <= 0
+    gifts.each do |gift|
+      gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil)
+    end
+    gifts
+  end
   def process_appstore_requests(user, password)
     gifts = Gift.where(:state => "requested", :kind => "appstore")
     return gifts if gifts.nil? or gifts.count <= 0
@@ -73,7 +89,7 @@ module DatabaseHelper
             table.column :app_id, :integer
             table.column :name, :string
             table.column :state, :string #owned, requested, available
-            table.column :kind, :string #appstore
+            table.column :kind, :string #appstore, facebook, twitter
             table.column :store_front, :string
             table.column :user_name, :string
             table.column :content, :string
@@ -81,6 +97,7 @@ module DatabaseHelper
             table.column :forceful_content, :string
             table.column :rejected, :boolean
             table.column :rejection_reason, :string
+            table.column :iap_product_id, :string
         end
       end
       unless table_exists? :devices
@@ -118,13 +135,21 @@ class App < Sinatra::Base
     @device = Device.find_or_create_by(udid: udid)
     halt 500, JSON.generate({:message => "device_id_nil"}) if @device.nil?
     unless Array(@device.gifts).count > 0
-      @device.gifts.create(:name => "Gift 1", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751)
-      @device.gifts.create(:name => "Gift 2", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751)
-      @device.gifts.create(:name => "Gift 3", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751)
-      @device.gifts.create(:name => "Gift 4", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751)
-      @device.gifts.create(:name => "Gift 5", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751)
-      @device.gifts.create(:name => "Gift 6", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751)
-      @device.gifts.create(:name => "Gift 7", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751)
+      @device.gifts.create(:name => "Gift 1", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 2", :kind => "facebook", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 3", :kind => "facebook", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 4", :kind => "twitter", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 5", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 6", :kind => "facebook", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 7", :kind => "twitter", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 8", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 9", :kind => "facebook", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 10", :kind => "facebook", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 11", :kind => "twitter", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 12", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 13", :kind => "facebook", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 14", :kind => "twitter", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
+      @device.gifts.create(:name => "Gift 15", :kind => "appstore", :state => "available", :rejected => false, :app_id => 482745751, :iap_product_id => "com.valentinradu.cadenza.tier6")
     end
   end
 
@@ -160,7 +185,8 @@ class App < Sinatra::Base
     halt 400, JSON.generate({:message => "invalid_passkey"}) if @json_data["passkey"] != passkey
     content_type :json
     status 200
-    notify_devices(APN, process_appstore_requests(@@credentials["user"], @@credentials["password"])).to_json
+    result = process_appstore_requests(@@credentials["user"], @@credentials["password"]).concat(process_twitter_requests()).concat(process_facebook_requests())
+    notify_devices(APN, result).to_json
   end
 
   post %r{\/giftRequest\/id/(.*)} do |udid|
@@ -173,33 +199,34 @@ class App < Sinatra::Base
     forceful_content = @json_data["forceful_content"]
 
     halt 404, JSON.generate({:message => "invalid_udid"}) if udid.nil? or udid.length <= 0
-    halt 400, JSON.generate({:message => "user_name_mandatory"}) if user_name.nil?
-    halt 400, JSON.generate({:message => "user_name_invalid"}) unless user_name.length > 0
-    halt 400, JSON.generate({:message => "email_invalid"}) unless email =~ %r{[\w+\-.]+@[a-z\d\-]+(\.[a-z]+)*\.[a-z]+}
     halt 400, JSON.generate({:message => "gift_id_invalid"}) if gift_id.nil?
-    halt 400, JSON.generate({:message => "store_front_invalid"}) if store_front.nil?
-    halt 400, JSON.generate({:message => "apn_token_invalid"}) if apn_token.nil?
 
-    @device.update_attributes(:email => email, :apn_token => apn_token)
     gift = @device.gifts.find_by_id(gift_id)
-
     halt 404, JSON.generate({:message => "gift_not_found"}) if gift.nil?
     halt 400, JSON.generate({:message => "gift_cant_be_requested"}) unless gift["state"] == "available"
 
     attributes = {}
-    logger.info user_name
-    logger.info udid
-    concurent_gifts = Gift.joins(:device).where("lower(user_name) == ? and devices.udid != ? and state == ?", user_name.downcase, udid, "owned")
-    unless concurent_gifts.nil? or concurent_gifts.count == 0
-      halt 400, JSON.generate({:message => "review_already_claimed"}) if forceful.nil? or forceful == false
-      halt 400, JSON.generate({:message => "forceful_review_content_missing"}) if forceful_content.nil? or forceful_content.length <= 0
-      halt 400, JSON.generate({:message => "forceful_review_content_identical"}) if gift.content == forceful_content
-      attributes[:forceful] = forceful
-      attributes[:forceful_content] = forceful_content
+    if gift.kind == "appstore"
+      halt 400, JSON.generate({:message => "user_name_mandatory"}) if user_name.nil?
+      halt 400, JSON.generate({:message => "user_name_invalid"}) unless user_name.length > 0
+      halt 400, JSON.generate({:message => "email_invalid"}) unless email =~ %r{[\w+\-.]+@[a-z\d\-]+(\.[a-z]+)*\.[a-z]+}
+      halt 400, JSON.generate({:message => "store_front_invalid"}) if store_front.nil?
+      halt 400, JSON.generate({:message => "apn_token_invalid"}) if apn_token.nil?
+
+      @device.update_attributes(:email => email, :apn_token => apn_token)
+
+      concurent_gifts = Gift.joins(:device).where("lower(user_name) == ? and devices.udid != ? and state == ?", user_name.downcase, udid, "owned")
+      unless concurent_gifts.nil? or concurent_gifts.count == 0
+        halt 400, JSON.generate({:message => "review_already_claimed"}) if forceful.nil? or forceful == false
+        halt 400, JSON.generate({:message => "forceful_review_content_missing"}) if forceful_content.nil? or forceful_content.length <= 0
+        halt 400, JSON.generate({:message => "forceful_review_content_identical"}) if gift.content == forceful_content
+        attributes[:forceful] = forceful
+        attributes[:forceful_content] = forceful_content
+      end
+      attributes[:store_front] = store_front
+      attributes[:user_name] = user_name
     end
     attributes[:state] = "requested"
-    attributes[:store_front] = store_front
-    attributes[:user_name] = user_name
     halt 500, JSON.generate({:message => "gift_cant_be_updated"}) unless gift.update_attributes(attributes)
     content_type :json
     status 201
