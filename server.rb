@@ -197,36 +197,50 @@ class App < Sinatra::Base
     store_front = @json_data["store_front"] if @@stores.keys.include? @json_data["store_front"].to_s
     forceful = @json_data["forceful"]
     forceful_content = @json_data["forceful_content"]
+    receipt = @json_data["receipt"]
+    gift_iap_id = @json_data["gift_iap_id"]
 
     halt 404, JSON.generate({:message => "invalid_udid"}) if udid.nil? or udid.length <= 0
-    halt 400, JSON.generate({:message => "gift_id_invalid"}) if gift_id.nil?
-
-    gift = @device.gifts.find_by_id(gift_id)
-    halt 404, JSON.generate({:message => "gift_not_found"}) if gift.nil?
-    halt 400, JSON.generate({:message => "gift_cant_be_requested"}) unless gift["state"] == "available"
 
     attributes = {}
-    if gift.kind == "appstore"
-      halt 400, JSON.generate({:message => "user_name_mandatory"}) if user_name.nil?
-      halt 400, JSON.generate({:message => "user_name_invalid"}) unless user_name.length > 0
-      halt 400, JSON.generate({:message => "email_invalid"}) unless email =~ %r{[\w+\-.]+@[a-z\d\-]+(\.[a-z]+)*\.[a-z]+}
-      halt 400, JSON.generate({:message => "store_front_invalid"}) if store_front.nil?
-      halt 400, JSON.generate({:message => "apn_token_invalid"}) if apn_token.nil?
+    if receipt.nil? or receipt.length <= 0 or gift_iap_id.nil? or gift_iap_id.length <= 0
+      halt 400, JSON.generate({:message => "gift_id_invalid"}) if gift_id.nil?
+      gift = @device.gifts.find_by_id(gift_id)
+      halt 404, JSON.generate({:message => "gift_not_found"}) if gift.nil?
+      halt 400, JSON.generate({:message => "gift_cant_be_requested"}) unless gift["state"] == "available"
+      if gift.kind == "appstore"
+        halt 400, JSON.generate({:message => "user_name_mandatory"}) if user_name.nil?
+        halt 400, JSON.generate({:message => "user_name_invalid"}) unless user_name.length > 0
+        halt 400, JSON.generate({:message => "email_invalid"}) unless email =~ %r{[\w+\-.]+@[a-z\d\-]+(\.[a-z]+)*\.[a-z]+}
+        halt 400, JSON.generate({:message => "store_front_invalid"}) if store_front.nil?
+        halt 400, JSON.generate({:message => "apn_token_invalid"}) if apn_token.nil?
 
-      @device.update_attributes(:email => email, :apn_token => apn_token)
+        @device.update_attributes(:email => email, :apn_token => apn_token)
 
-      concurent_gifts = Gift.joins(:device).where("lower(user_name) == ? and devices.udid != ? and state == ?", user_name.downcase, udid, "owned")
-      unless concurent_gifts.nil? or concurent_gifts.count == 0
-        halt 400, JSON.generate({:message => "review_already_claimed"}) if forceful.nil? or forceful == false
-        halt 400, JSON.generate({:message => "forceful_review_content_missing"}) if forceful_content.nil? or forceful_content.length <= 0
-        halt 400, JSON.generate({:message => "forceful_review_content_identical"}) if gift.content == forceful_content
-        attributes[:forceful] = forceful
-        attributes[:forceful_content] = forceful_content
+        concurent_gifts = Gift.joins(:device).where("lower(user_name) == ? and devices.udid != ? and state == ?", user_name.downcase, udid, "owned")
+        unless concurent_gifts.nil? or concurent_gifts.count == 0
+          halt 400, JSON.generate({:message => "review_already_claimed"}) if forceful.nil? or forceful == false
+          halt 400, JSON.generate({:message => "forceful_review_content_missing"}) if forceful_content.nil? or forceful_content.length <= 0
+          halt 400, JSON.generate({:message => "forceful_review_content_identical"}) if gift.content == forceful_content
+          attributes[:forceful] = forceful
+          attributes[:forceful_content] = forceful_content
+        end
+        attributes[:store_front] = store_front
+        attributes[:user_name] = user_name
       end
-      attributes[:store_front] = store_front
-      attributes[:user_name] = user_name
+      attributes[:state] = "requested"
+    else
+      gift = @device.gifts.find_by(:iap_product_id => gift_iap_id)
+      halt 404, JSON.generate({:message => "gift_not_found"}) if gift.nil?
+      halt 400, JSON.generate({:message => "receipt_not_valid"}) unless r = Venice::Receipt.verify(receipt)
+      halt 400, JSON.generate({:message => "receipt_not_for_this_gift"}) unless r.product_id == gift[:iap_product_id]
+      attributes[:state] = "owned"
+      attributes[:forceful] = false
+      attributes[:forceful_content] = nil
+      attributes[:rejected] = false
+      attributes[:rejection_reason] = nil
     end
-    attributes[:state] = "requested"
+
     halt 500, JSON.generate({:message => "gift_cant_be_updated"}) unless gift.update_attributes(attributes)
     content_type :json
     status 201

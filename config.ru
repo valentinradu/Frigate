@@ -9,6 +9,7 @@ require 'webrick'
 require 'webrick/https'
 require 'houston'
 require 'mustache'
+require 'venice'
 require_relative "model"
 require_relative "server"
 
