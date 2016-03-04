@@ -10,6 +10,8 @@ require 'webrick/https'
 require 'houston'
 require 'mustache'
 require 'venice'
+require 'openssl'
+require 'base64'
 require_relative "model"
 require_relative "server"
 

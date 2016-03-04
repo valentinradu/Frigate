@@ -1,9 +1,12 @@
 require "curl"
 require "json"
 require "test-unit"
+require "openssl"
+require "base64"
 
 class ServerTest < Test::Unit::TestCase
-  @@credentials = JSON.parse(File.read("account.json"))
+  @@credentials = JSON.parse(File.read "account.json")
+  @@public_cert = OpenSSL::X509::Certificate.new(File.read "./cert.crt")
 
   def test_user_gift_request_facebook
     data = {:gift_kind => "facebook"}
@@ -62,8 +65,8 @@ class ServerTest < Test::Unit::TestCase
   end
 
   def test_user_gift_request_force
-    data = {:email => "Das.Musiker@gmail.com",
-            :user_name => "Das Musiker",
+    data = {:email => "Queneee@gmail.com",
+            :user_name => "Queneee",
             :store_front => "US",
             :gift_kind => "appstore"}
     helper_gift_request_with_process(data, "A3B5166B-BD0C-4D9F-999D-38CB1BD431B9", "owned", false, nil)
@@ -114,6 +117,15 @@ class ServerTest < Test::Unit::TestCase
     curl = Curl.post("https://localhost:9292/processAppstoreRequests", JSON.generate(data)) do |curl| curl.ssl_verify_peer = false end
     body = JSON.parse curl.body_str
     assert_equal(200, curl.response_code)
+
+    gift = body.find {|s| s["id"] == gift_id }
+    if gift["state"] == "owned"
+      digest = OpenSSL::Digest::SHA256.new
+      json = JSON.generate({:iap_product_id => "com.valentinradu.cadenza.tier6", :app_id => 482745751})
+      valid = @@public_cert.public_key.verify digest, Base64.decode64(gift["receipt"]), json
+      assert_equal(valid, true, json)
+    end
+
     assert_equal(expected_state, body.find {|s| s["id"] == gift_id }["state"], body)
     assert_equal(expected_rejected, body.find {|s| s["id"] == gift_id }["rejected"], body)
     assert_equal(expected_rejected_reason, body.find {|s| s["id"] == gift_id }["rejection_reason"], body)
