@@ -1,9 +1,9 @@
-require "sinatra"
-require "active_record"
-require "json"
-require "curb"
-require "rufus-scheduler"
-require "spaceship"
+require 'sinatra'
+require 'active_record'
+require 'json'
+require 'curb'
+require 'rufus-scheduler'
+require 'spaceship'
 require 'openssl'
 require 'webrick'
 require 'webrick/https'

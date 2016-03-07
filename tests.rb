@@ -121,9 +121,9 @@ class ServerTest < Test::Unit::TestCase
     gift = body.find {|s| s["id"] == gift_id }
     if gift["state"] == "owned"
       digest = OpenSSL::Digest::SHA256.new
-      json = JSON.generate({:iap_product_id => "com.valentinradu.cadenza.tier6", :app_id => 482745751})
-      valid = @@public_cert.public_key.verify digest, Base64.decode64(gift["receipt"]), json
-      assert_equal(valid, true, json)
+      product_id = 'com.valentinradu.cadenza.tier6'
+      valid = @@public_cert.public_key.verify digest, Base64.decode64(gift["receipt"]), product_id
+      assert_equal(valid, true, product_id)
     end
 
     assert_equal(expected_state, body.find {|s| s["id"] == gift_id }["state"], body)

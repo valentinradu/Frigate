@@ -1,12 +1,12 @@
 module RequestsProcessor
   @@private_key = OpenSSL::PKey::RSA.new(File.read "./pkey.pem")
-  
+
   def process_twitter_requests()
     gifts = Gift.where(:state => "requested", :kind => "twitter")
     return gifts if gifts.nil? or gifts.count <= 0
     gifts.each do |gift|
       digest = OpenSSL::Digest::SHA256.new
-      receipt = Base64.encode64(@@private_key.sign digest, JSON.generate({:iap_product_id => gift.iap_product_id, :app_id => gift.app_id}))
+      receipt = Base64.strict_encode64(@@private_key.sign digest, gift.iap_product_id)
       gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :receipt => receipt)
     end
     gifts
@@ -16,7 +16,7 @@ module RequestsProcessor
     return gifts if gifts.nil? or gifts.count <= 0
     gifts.each do |gift|
       digest = OpenSSL::Digest::SHA256.new
-      receipt = Base64.encode64(@@private_key.sign digest, JSON.generate({:iap_product_id => gift.iap_product_id, :app_id => gift.app_id}))
+      receipt = Base64.strict_encode64(@@private_key.sign digest, gift.iap_product_id)
       gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :receipt => receipt)
     end
     gifts
@@ -45,7 +45,7 @@ module RequestsProcessor
             else
               concurent_gifts = Gift.joins(:device).where("lower(user_name) == ? and devices.udid != ? and state == ?", gift.user_name.downcase, gift.device.udid, "owned")
               digest = OpenSSL::Digest::SHA256.new
-              receipt = Base64.encode64(@@private_key.sign digest, JSON.generate({:iap_product_id => gift.iap_product_id, :app_id => gift.app_id}))
+              receipt = Base64.strict_encode64(@@private_key.sign digest, gift.iap_product_id)
               if concurent_gifts.nil? or concurent_gifts.count == 0
                 gift.update_attributes(:state => "owned", :rejected => false, :rejection_reason => nil, :content => review.content, :receipt => receipt)
               else
