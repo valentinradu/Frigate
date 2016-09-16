@@ -1,3 +1,19 @@
+require 'sinatra'
+require 'active_record'
+require 'json'
+require 'curb'
+require 'rufus-scheduler'
+require 'spaceship'
+require 'openssl'
+require 'webrick'
+require 'webrick/https'
+require 'houston'
+require 'mustache'
+require 'venice'
+require 'openssl'
+require 'base64'
+require 'sinatra/activerecord'
+
 module RequestsProcessor
   @@private_key = OpenSSL::PKey::RSA.new(File.read "./pkey.pem")
 
@@ -82,45 +98,9 @@ module RequestsProcessor
   end
 end
 
-module DatabaseHelper
-  def create_database_at_path(path)
-    ActiveRecord::Base.logger = Logger.new(STDOUT)
-    ActiveRecord::Base.establish_connection(
-     :adapter   => 'sqlite3',
-     :database  => path
-    )
-
-    ActiveRecord::Schema.define do
-      unless table_exists? :gifts
-        create_table :gifts do |table|
-            table.column :device_id, :integer
-            table.column :app_id, :integer
-            table.column :name, :string
-            table.column :state, :string #owned, requested, available
-            table.column :kind, :string #appstore, facebook, twitter
-            table.column :store_front, :string
-            table.column :user_name, :string
-            table.column :content, :string
-            table.column :forceful, :boolean
-            table.column :forceful_content, :string
-            table.column :rejected, :boolean
-            table.column :rejection_reason, :string
-            table.column :iap_product_id, :string
-            table.column :receipt, :string
-        end
-      end
-      unless table_exists? :devices
-        create_table :devices do |table|
-            table.column :udid, :string
-            table.column :email, :string
-            table.column :apn_token, :string
-        end
-      end
-    end
-  end
-end
-
 class App < Sinatra::Base
+
+  register Sinatra::ActiveRecordExtension
 
   set :static, false
 
@@ -130,8 +110,11 @@ class App < Sinatra::Base
   helpers RequestsProcessor
 
   configure :development do
+
     enable :logging
-    Class.new.extend(DatabaseHelper).create_database_at_path './development.db'
+
+    ActiveRecord::Base.logger = Logger.new(STDOUT)
+    ActiveRecord::Base.establish_connection :development
     APN = Houston::Client.development
     # APN.certificate = File.read("apple_push_notification.pem")
     # Rufus::Scheduler.new.every '2s' do
